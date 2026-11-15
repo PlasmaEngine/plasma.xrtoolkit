@@ -1,0 +1,40 @@
+// plasma.xrtoolkit — VR interaction components: grabbing, throwing, laser pointers, teleport and turning.
+//
+// The AUTHORED manifest, kept in source next to the plugin. Component hashes and sizes are NOT
+// here: the packaging step computes those and emits them into the published manifest.
+//
+// Field reference and validation rules: Docs/PluginPackageManagerPlan.html §05.
+
+PackageInfo
+{
+	string %Id{"plasma.xrtoolkit"}
+	string %Version{"1.0.0"}
+	string %Publisher{"PlasmaTechnology"}
+	string %License{"MIT"}
+	string %Homepage{"https://plasmagameengine.com"}
+
+	string %MinEngineVersion{"0.12.0"}
+	string %MaxEngineVersion{""}
+	string %AbiTag{"win64-msvc19-0.12.0-abi7-dev"}
+
+	string %DisplayName{"XR Toolkit"}
+	string %Category{"XR"}
+	string %Description{"VR interaction components: hands that pick up, hold and throw objects, grabbable objects with snap or offset grips and haptic feedback, laser pointers that send enter, exit and click events to what they point at, arc teleport onto walkable surfaces, and snap or smooth turning.
+
+Works with any XR runtime the engine supports. Physics queries go through the engine's physics interface, so no physics package is required at build time."}
+
+	string %EditorPlugins{"plEditorPluginXRToolkit"}
+	string %EditorEnginePlugins{}
+	string %RuntimePlugins{"plXRToolkitPlugin"}
+	string %PackageDependencies{}
+
+	// ---- assets ---------------------------------------------------------------
+	// Shape icons, mounted as a data directory so Editor/ShapeIcons/<type> resolves like the engine's own.
+	Mount { string %Path{"Assets"} string %RootName{"plasma.xrtoolkit"} bool %Writable{false} }
+
+	Component { string %Name{"assets"} string %Platform{"any"} }
+	Component { string %Name{"manifest"} string %Platform{"any"} }
+	Component { string %Name{"runtime-win64"} string %Platform{"win64"} }
+	Component { string %Name{"editor-win64"} string %Platform{"win64"} }
+	Component { string %Name{"tool"} string %Platform{"any"} string %Path{"EditorIcons"} }
+}
