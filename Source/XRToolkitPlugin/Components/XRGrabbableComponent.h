@@ -13,6 +13,7 @@ using plXRGrabbableComponentManager = plComponentManager<class plXRGrabbableComp
 /// A hand picks the object up when its grip point is inside Grab Radius of the object's origin, or when the hand's reach sphere touches one
 /// of the object's physics shapes. While it is held, a physics actor on the object (any component with a "Kinematic" property, such as a
 /// dynamic actor) is switched to kinematic and follows the hand; on release it is switched back and thrown with the hand's velocity.
+/// A hand can also pull the object from a distance: it launches it on an arc towards itself, to be caught.
 ///
 /// Sends plMsgGenericEvent "XRGrab" and "XRRelease" as event messages from the object, with the hand component as the sender and
 /// "Left" or "Right" as the value.
@@ -69,15 +70,26 @@ public:
   /// \brief Called by plXRHandComponent when it picks the object up.
   void OnGrabbed(plXRHandComponent* pHand, plXRDeviceType::Enum controller);
 
-  /// \brief Called by plXRHandComponent when it lets go.
+  /// \brief Called by plXRHandComponent when it lets go: the physics actor gets its own Kinematic setting back.
   ///
-  /// \a vHandVelocity is the hand's velocity over its last few frames and \a vLastFrameVelocity the object's velocity over the last
-  /// frame, which a kinematic actor keeps when it becomes dynamic again; the difference is applied as an impulse.
-  void OnReleased(plXRHandComponent* pHand, plXRDeviceType::Enum controller, const plVec3& vHandVelocity, const plVec3& vLastFrameVelocity, bool bThrow);
+  /// A kinematic actor keeps the velocity of its last move when it becomes dynamic. The hand moves the object at the throw velocity in
+  /// the frame before it calls this, so the object leaves with that velocity whatever its mass.
+  void OnReleased(plXRHandComponent* pHand, plXRDeviceType::Enum controller);
+
+  /// \brief Whether the object has a physics actor that becomes dynamic again when it is let go, so that it can be thrown or launched.
+  bool HasDynamicActor();
+
+  /// \brief Makes the physics actor kinematic for a launch towards a hand, as for a grab. Returns false when there is no dynamic actor.
+  bool BeginFlight();
+
+  /// \brief Gives the physics actor its own Kinematic setting back after BeginFlight().
+  void EndFlight();
 
 private:
   /// \brief Finds the component with a bool "Kinematic" property on the owner (a dynamic physics actor).
   plComponent* FindPhysicsActor();
+  void MakeKinematic();
+  void RestorePhysics();
   void SendEvent(const plHashedString& sEvent, plXRHandComponent* pHand, plXRDeviceType::Enum controller);
 
   plComponentHandle m_hHand;

@@ -3,6 +3,7 @@
 #include <EditorUi/Widgets.h>
 #include <Foundation/Configuration/Plugin.h>
 #include <XRToolkitPlugin/Components/XRGrabbableComponent.h>
+#include <XRToolkitPlugin/Components/XRHandComponent.h>
 #include <XRToolkitPlugin/Components/XRPointerComponent.h>
 #include <XRToolkitPlugin/Components/XRTeleportComponent.h>
 #include <XRToolkitPlugin/Components/XRTurnComponent.h>
@@ -70,6 +71,13 @@ namespace
       const bool bHaptic = GetBool(e, "HapticOnGrab");
       Show(e, "HapticAmplitude", bHaptic);
       Show(e, "HapticDuration", bHaptic);
+    }
+    else if (pType == plGetStaticRTTI<plXRHandComponent>())
+    {
+      const bool bPull = GetValueAsFloat(e, "PullRange") > 0.0f;
+      Show(e, "PullAngle", bPull);
+      Show(e, "PullFlickRate", bPull);
+      Show(e, "PullFlightTime", bPull);
     }
     else if (pType == plGetStaticRTTI<plXRPointerComponent>())
     {

@@ -66,6 +66,23 @@ namespace plXRToolkit
     return controller == plXRDeviceType::LeftController ? "left" : "right";
   }
 
+  bool PrimaryStickIsTrackpad(plXRDeviceType::Enum controller)
+  {
+    plXRInterface* pXR = GetRunningXR();
+    if (pXR == nullptr)
+      return false;
+
+    const plXRDeviceID deviceID = pXR->GetXRInput().GetDeviceIDByType(controller);
+    if (deviceID == -1)
+      return false;
+
+    // A controller whose only 2D input is a trackpad reports it as the primary stick (the Vive wands). Controllers with
+    // a real thumbstick have face buttons, a thumbrest or a second stick or trackpad as well.
+    const plBitflags<plXRDeviceFeatures> features = pXR->GetXRInput().GetDeviceFeatures(deviceID);
+    return features.IsSet(plXRDeviceFeatures::PrimaryAnalogStick) && features.IsSet(plXRDeviceFeatures::PrimaryAnalogStickClick) &&
+           !features.IsAnySet(plXRDeviceFeatures::ButtonA | plXRDeviceFeatures::ButtonB | plXRDeviceFeatures::Thumbrest | plXRDeviceFeatures::SecondaryAnalogStick);
+  }
+
   float ReadInput(const plGameObject* pObject, plStringView sAction, plStringView sSlot, plXRDeviceType::Enum controller, plStringView sDefaultSlotSuffix)
   {
     if (!sAction.IsEmpty())
@@ -89,6 +106,18 @@ namespace plXRToolkit
     else
     {
       sSlotName.Set("xr_hand_", GetSideName(controller), "_", sDefaultSlotSuffix);
+
+      // A trackpad reports a position as soon as the thumb rests on it. Its direction only counts while the pad is
+      // pressed, as a stick's would only once it is pushed.
+      if (sDefaultSlotSuffix.StartsWith("primary_analog_stick_") && PrimaryStickIsTrackpad(controller))
+      {
+        plStringBuilder sClickSlot("xr_hand_", GetSideName(controller), "_primary_analog_stick_click");
+
+        plKeyState::Enum clickState = plKeyState::Up;
+        float fClick = 0.0f;
+        if (!plInputManager::TryGetInputSlotState(sClickSlot, clickState, fClick) || fClick < 0.5f)
+          return 0.0f;
+      }
     }
 
     plKeyState::Enum state = plKeyState::Up;

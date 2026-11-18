@@ -66,6 +66,9 @@ Each input is read in one of two ways:
   controller, such as `xr_hand_left_grip_value` or `xr_hand_right_trigger_value`. All XR slot names are listed in the
   editor's input slot list under `xr_hand_...`.
 
+On controllers whose only 2D input is a trackpad (the Vive wands), the default stick slots only count while the pad is
+pressed, so resting a thumb on it neither turns nor aims a teleport.
+
 ### Order of updates
 
 The components update every frame while the world simulates, right after `plDeviceTrackingComponent` has moved the
@@ -125,6 +128,26 @@ When the grip value reaches **Grip Threshold**, the hand picks up the nearest gr
 below half of the threshold, the hand lets go and throws the object with its velocity averaged over the last **Throw
 Samples** frames. The reach sphere is shown in the viewport when the object is selected.
 
+**Throwing.** On release the object moves one more frame as a kinematic actor at the throw velocity and becomes dynamic in
+the next. Its body keeps that velocity, so a throw is as fast as the hand whatever the object's mass.
+
+**Pulling.** Pulling and catching are separate steps:
+
+1. While the hand is open, the grabbable it points at (along the controller's aim pose, within **Pull Angle** and **Pull
+   Range**, not hidden behind other geometry, and with a dynamic physics actor) is marked with a gold ring. The controller
+   ticks when a new one is picked.
+2. Closing the hand locks onto it: the ring turns red and doubles. Keep the hand closed.
+3. Flick the wrist, turning it faster than **Pull Flick Rate**. The object is launched on a ballistic arc that ends just
+   above where the hand was, **Pull Flight Time** later.
+4. Catch it: a closed hand grabs it when it comes close. A hand that is open when it arrives lets it fall past; closing it
+   then grabs it like any object in reach.
+
+Grabbables within reach are always grabbed normally.
+
+**Pushing.** The open hand pushes dynamic physics actors that touch its reach sphere and are not grabbables, such as a
+door on a hinge. The push is a force along the hand's movement: **Push Strength** newtons per metre per second of hand
+speed.
+
 ### Setup
 
 1. Add the component to the object that tracks a controller's grip pose, or to a child of it.
@@ -141,11 +164,16 @@ Samples** frames. The reach sphere is shown in the viewport when the object is s
 | Grip Slot | (empty) | Input slot read when no action is used. Empty uses `xr_hand_<left/right>_grip_value`. |
 | Grip Threshold | 0.5 | Grip value at which the hand closes. The hand opens again below half of it. |
 | Throw Samples | 5 | Number of frames the throw velocity is averaged over, 2 to 16. More frames give smoother, less snappy throws. |
+| Pull Range | 6 m | How far away a grabbable can be pulled. 0 turns pulling off. |
+| Pull Angle | 12° | How far off the pointing direction a grabbable may be and still be picked for pulling. Shown only with a pull range. |
+| Pull Flick Rate | 250°/s | How fast the wrist has to turn to launch the locked grabbable. Shown only with a pull range. |
+| Pull Flight Time | 0.7 s | How long a launched grabbable takes to reach the hand. Shown only with a pull range. |
+| Push Strength | 40 | Force per metre per second of hand speed with which the open hand pushes dynamic objects. 0 turns pushing off. |
 
 ### Script functions
 
-`Grab()` picks up the nearest grabbable in reach, `Release(Throw)` lets go, and `IsHolding()` returns whether the hand holds
-something.
+`Grab()` picks up the nearest grabbable in reach, `Release(Throw)` lets go, `IsHolding()` returns whether the hand holds
+something and `IsPulling()` whether the held object is still flying into the hand.
 
 ## Pointer (`plXRPointerComponent`)
 
