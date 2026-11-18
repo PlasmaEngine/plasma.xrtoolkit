@@ -138,11 +138,8 @@ void plXRGrabbableComponent::SendEvent(const plHashedString& sEvent, plXRHandCom
   GetOwner()->SendEventMessage(msg, pHand);
 }
 
-void plXRGrabbableComponent::OnGrabbed(plXRHandComponent* pHand, plXRDeviceType::Enum controller)
+void plXRGrabbableComponent::MakeKinematic()
 {
-  m_hHand = pHand->GetHandle();
-
-  // a held physics actor follows the hand kinematically
   m_hPhysicsActor.Invalidate();
   if (plComponent* pActor = FindPhysicsActor())
   {
@@ -150,6 +147,57 @@ void plXRGrabbableComponent::OnGrabbed(plXRHandComponent* pHand, plXRDeviceType:
     m_bActorWasKinematic = plReflectionUtils::GetMemberPropertyValue(pProp, pActor).ConvertTo<bool>();
     plReflectionUtils::SetMemberPropertyValue(pProp, pActor, true);
     m_hPhysicsActor = pActor->GetHandle();
+  }
+}
+
+void plXRGrabbableComponent::RestorePhysics()
+{
+  plComponent* pActor = nullptr;
+  if (GetWorld()->TryGetComponent(m_hPhysicsActor, pActor))
+  {
+    const auto* pProp = static_cast<const plAbstractMemberProperty*>(pActor->GetDynamicRTTI()->FindPropertyByName("Kinematic"));
+    plReflectionUtils::SetMemberPropertyValue(pProp, pActor, m_bActorWasKinematic);
+  }
+
+  m_hPhysicsActor.Invalidate();
+}
+
+bool plXRGrabbableComponent::HasDynamicActor()
+{
+  plComponent* pActor = nullptr;
+  if (GetWorld()->TryGetComponent(m_hPhysicsActor, pActor))
+    return !m_bActorWasKinematic;
+
+  pActor = FindPhysicsActor();
+  if (pActor == nullptr)
+    return false;
+
+  const auto* pProp = static_cast<const plAbstractMemberProperty*>(pActor->GetDynamicRTTI()->FindPropertyByName("Kinematic"));
+  return !plReflectionUtils::GetMemberPropertyValue(pProp, pActor).ConvertTo<bool>();
+}
+
+bool plXRGrabbableComponent::BeginFlight()
+{
+  if (IsGrabbed() || !HasDynamicActor())
+    return false;
+
+  MakeKinematic();
+  return true;
+}
+
+void plXRGrabbableComponent::EndFlight()
+{
+  RestorePhysics();
+}
+
+void plXRGrabbableComponent::OnGrabbed(plXRHandComponent* pHand, plXRDeviceType::Enum controller)
+{
+  m_hHand = pHand->GetHandle();
+
+  // a held physics actor follows the hand kinematically; a launched object is already kinematic and keeps its own setting to restore
+  if (m_hPhysicsActor.IsInvalidated())
+  {
+    MakeKinematic();
   }
 
   if (m_bHapticOnGrab)
@@ -160,41 +208,11 @@ void plXRGrabbableComponent::OnGrabbed(plXRHandComponent* pHand, plXRDeviceType:
   SendEvent(plMakeHashedString("XRGrab"), pHand, controller);
 }
 
-void plXRGrabbableComponent::OnReleased(plXRHandComponent* pHand, plXRDeviceType::Enum controller, const plVec3& vHandVelocity, const plVec3& vLastFrameVelocity, bool bThrow)
+void plXRGrabbableComponent::OnReleased(plXRHandComponent* pHand, plXRDeviceType::Enum controller)
 {
   m_hHand.Invalidate();
 
-  plComponent* pActor = nullptr;
-  if (GetWorld()->TryGetComponent(m_hPhysicsActor, pActor))
-  {
-    const auto* pProp = static_cast<const plAbstractMemberProperty*>(pActor->GetDynamicRTTI()->FindPropertyByName("Kinematic"));
-    plReflectionUtils::SetMemberPropertyValue(pProp, pActor, m_bActorWasKinematic);
-
-    if (!m_bActorWasKinematic && pActor->IsActiveAndInitialized())
-    {
-      float fMass = 1.0f;
-      const plAbstractProperty* pMassProp = pActor->GetDynamicRTTI()->FindPropertyByName("Mass");
-      if (pMassProp != nullptr && pMassProp->GetCategory() == plPropertyCategory::Member)
-      {
-        fMass = plReflectionUtils::GetMemberPropertyValue(static_cast<const plAbstractMemberProperty*>(pMassProp), pActor).ConvertTo<float>();
-      }
-
-      // the body keeps the velocity it had as a kinematic actor; the impulse brings it to the throw velocity, or to rest when dropped
-      const plVec3 vTarget = bThrow ? vHandVelocity * m_fThrowVelocityScale : plVec3::MakeZero();
-      const plVec3 vImpulse = (vTarget - vLastFrameVelocity) * fMass;
-
-      if (!vImpulse.IsZero(0.0001f) && vImpulse.IsValid())
-      {
-        plMsgPhysicsAddImpulse msg;
-        msg.m_vGlobalPosition = GetOwner()->GetGlobalPosition();
-        msg.m_vImpulse = vImpulse;
-        msg.m_uiImpulseType = 0; // the impulse is given as a value, not looked up by type
-        pActor->SendMessage(msg);
-      }
-    }
-  }
-
-  m_hPhysicsActor.Invalidate();
+  RestorePhysics();
 
   SendEvent(plMakeHashedString("XRRelease"), pHand, controller);
 }
