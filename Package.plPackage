@@ -13,9 +13,9 @@ PackageInfo
 	string %License{"MIT"}
 	string %Homepage{"https://plasmagameengine.com"}
 
-	string %MinEngineVersion{"0.12.0"}
+	string %MinEngineVersion{"0.12.2"}
 	string %MaxEngineVersion{""}
-	string %AbiTag{"win64-msvc19-0.12.0-abi7-dev"}
+	string %AbiTag{"win64-msvc19-0.12.2-abi7-dev"}
 
 	string %DisplayName{"XR Toolkit"}
 	string %Category{"XR"}

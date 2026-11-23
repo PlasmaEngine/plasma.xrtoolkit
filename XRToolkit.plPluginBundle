@@ -5,7 +5,7 @@ PluginInfo
 {
 	string %DisplayName{"XR Toolkit"}
 	string %Category{"XR"}
-	string %MinEngineVersion{"0.12.0"}
+	string %MinEngineVersion{"0.12.2"}
 	string %MaxEngineVersion{""}
 	string %Description{"VR interaction components: grabbable objects, hands that hold and throw them, laser pointers, arc teleport and snap or smooth turning."}
 	string %EditorPlugins{"plEditorPluginXRToolkit"}
